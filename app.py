@@ -31,7 +31,7 @@ df_base = pd.DataFrame(data)
 # BARRE LATERALE 
 with st.sidebar:
     st.header("Paramètres de la simulation")
-    mode_cumul = st.toggle("Consolidation des flux viagers (Vie entière)", value=True)
+    mode_cumul = st.toggle("Prise en compte de la temporalité de la transmission (Vie entière)", value=True)
     mode_distinction = st.toggle("Approche duale (Capital Créé / Hérité)", value=True)
     
     st.divider()
