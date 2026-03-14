@@ -9,7 +9,7 @@ L'outil repose sur une architecture de flux stationnaires et intègre des variab
 
 ## Accès au simulateur
 Vous pouvez tester le modèle et ses paramètres de paramétrage via l'interface interactive :
-👉 [https://microsimulation-successions.streamlit.app/](https://microsimulation-successions.streamlit.app/)
+👉 https://microsimulation-fiscalite-successions.streamlit.app
 
 ## Structure du dépôt
 - `app.py` : Script principal utilisant le framework *Streamlit* pour l'interface et le moteur de calcul.
