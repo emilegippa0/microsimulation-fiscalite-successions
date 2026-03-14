@@ -4,17 +4,17 @@ import numpy as np
 import plotly.express as px
 
 # CONFIGURATION 
-st.set_page_config(page_title="Simulateur de reforme de l'impot sur les successions", layout="wide")
+st.set_page_config(page_title="Microsimulation de la fiscalité successorale", layout="wide")
 
 # TITRE ET INTRODUCTION 
-st.title("Simulateur de reforme de l'impot sur les successions")
+st.title("Modèle de microsimulation de la fiscalité des successions")
 st.markdown("""
-    Ce simulateur modelise une reforme de la fiscalite des transmissions destinee a financer un **Heritage Universel**.
+    Ce modèle simule les impacts budgétaires et redistributifs d'une réforme de la fiscalité des transmissions, intégrant le financement d'un **transfert intergénérationnel forfaitaire**.
     
-    **Axes de la simulation :**
-    * **Flux cumule** : Integration des donations et successions sur la vie entiere.
-    * **Dualite du patrimoine** : Distinction entre patrimoine *cree* (effort) et *herite* (reproduction).
-    * **Heritage Universel** : Versement etale pour accompagner l'entree dans l'age adulte.
+    **Axes méthodologiques de la simulation :**
+    * **Approche vie entière** : Consolidation des donations et successions (neutralisation de l'optimisation temporelle).
+    * **Dualité de l'assiette** : Distinction entre capital *créé* (effort d'épargne) et capital *hérité* (fructification passive).
+    * **Transfert intergénérationnel** : Versement annuité pour l'accompagnement à l'insertion économique des jeunes adultes.
 """)
 
 # DONNEES D'ENTREE 
@@ -30,14 +30,14 @@ df_base = pd.DataFrame(data)
 
 # BARRE LATERALE 
 with st.sidebar:
-    st.header("Parametres de la Reforme")
-    mode_cumul = st.toggle("Fin de l'amnesie fiscale (Cumul)", value=True)
-    mode_distinction = st.toggle("Distinguer Cree / Herite", value=True)
+    st.header("Paramètres de la simulation")
+    mode_cumul = st.toggle("Consolidation des flux viagers (Vie entière)", value=True)
+    mode_distinction = st.toggle("Approche duale (Capital Créé / Hérité)", value=True)
     
     st.divider()
-    contrib_etat = st.number_input("Prelevement Etat (Md EUR)", value=0.0) * 1e9
+    contrib_etat = st.number_input("Contribution au budget de l'État (Md EUR)", value=0.0) * 1e9
 
-    with st.expander("Seuils des tranches marginales du Patrimoine CREE"):
+    with st.expander("Seuils marginaux - Capital CRÉÉ"):
         seuils_c = []
         defauts_c = [10000, 50000, 75000, 100000, 150000, 250000, 500000, 1000000, 2000000]
         for i in range(9):
@@ -45,7 +45,7 @@ with st.sidebar:
             seuils_c.append(s)
         seuils_c.append(1e15)
 
-    with st.expander("Seuils des tranches marginales du Patrimoine HERITE"):
+    with st.expander("Seuils marginaux - Capital HÉRITÉ"):
         seuils_h = []
         defauts_h = [10000, 50000, 75000, 100000, 150000, 250000, 500000, 1000000, 2000000]
         for i in range(9):
@@ -53,10 +53,10 @@ with st.sidebar:
             seuils_h.append(s)
         seuils_h.append(1e15)
 
-    with st.expander("Taux sur le Patrimoine CREE"):
+    with st.expander("Taux d'imposition - Capital CRÉÉ"):
         taux_c = [st.slider(f"Taux C T{i+1}", 0.0, 1.0, 0.05 + (i*0.05), key=f"c{i}") for i in range(10)]
 
-    with st.expander("Taux sur le Patrimoine HERITE"):
+    with st.expander("Taux d'imposition - Capital HÉRITÉ"):
         taux_h = [st.slider(f"Taux H T{i+1}", 0.0, 1.0, 0.50 + (i*0.05) if i < 9 else 0.99, key=f"h{i}") for i in range(10)]
 
 # CALCULS 
@@ -87,7 +87,6 @@ def appliquer_fiscalite(row):
     imp_c = calculer_impot_marginal(row["C_enfant"], seuils_c, taux_c)
     return imp_h + imp_c
 
-# On utilise bien le nom 'Impot_enfant' pour la suite
 df["Impot_enfant"] = df.apply(appliquer_fiscalite, axis=1)
 df["Recettes_totales"] = df["Impot_enfant"] * df["Enfants_par_menage"] * df["Nb_successions"]
 df["Taux_effectif"] = (df["Impot_enfant"] / df["Part_enfant"]).fillna(0)
@@ -98,28 +97,27 @@ dotation_totale = max(0, (df["Recettes_totales"].sum() - contrib_etat) / 800000)
 annuite = dotation_totale / 8
 
 c1, c2 = st.columns(2)
-c1.metric("Recettes Fiscales Totales", f"{total_mrd:.2f} Md EUR")
-c2.metric("Heritage Universel (Total)", f"{dotation_totale:,.0f} EUR")
-st.info(f"Soit un versement de {annuite:,.0f} EUR par an pour chaque jeune entre 18 et 25 ans.")
+c1.metric("Recettes Fiscales Théoriques", f"{total_mrd:.2f} Md EUR")
+c2.metric("Dotation globale par jeune (18-25 ans)", f"{dotation_totale:,.0f} EUR")
+st.info(f"Soit une annuité de {annuite:,.0f} EUR versée à chaque individu de la cohorte pendant 8 ans.")
 
-st.plotly_chart(px.line(df, x="Groupe", y="Taux_effectif", markers=True, title="Progressivite de l'impot (Taux effectif par enfant)").update_yaxes(tickformat=".0%"), use_container_width=True)
+st.plotly_chart(px.line(df, x="Groupe", y="Taux_effectif", markers=True, title="Profil de progressivité (Taux effectif par bénéficiaire)").update_yaxes(tickformat=".0%"), use_container_width=True)
 
 # TABLEAU COMPLET 
-st.subheader("Detail des flux par decile")
+st.subheader("Détail des flux financiers par décile")
 
 df_display = df[["Groupe", "Part_enfant", "H_enfant", "C_enfant", "Impot_enfant", "Taux_effectif", "Recettes_totales"]].copy()
-# On transforme les recettes totales en Millions pour raccourcir la colonne
 df_display["Recettes_totales"] = df_display["Recettes_totales"] / 1e6
-df_display.columns = ["Groupe", "Cap./enf.", "Part Herite", "Part Cree", "Imp./enf.", "Taux Effectif", "Total (M EUR)"]
+df_display.columns = ["Groupe", "Transmission/enf.", "Part Héritée", "Part Créée", "Impôt/enf.", "Taux Effectif", "Total (M EUR)"]
 
 st.dataframe(
     df_display.style.format({
-        "Cap./enf.": "{:,.0f}",
-        "Herite": "{:,.0f}",
-        "Cree": "{:,.0f}",
-        "Imp./enf.": "{:,.0f}",
-        "Taux Eff.": "{:.0%}",
-        "Total (MEUR)": "{:,.1f}" # Une decimale pour les millions
+        "Transmission/enf.": "{:,.0f}",
+        "Part Héritée": "{:,.0f}",
+        "Part Créée": "{:,.0f}",
+        "Impôt/enf.": "{:,.0f}",
+        "Taux Effectif": "{:.0%}",
+        "Total (M EUR)": "{:,.1f}"
     }), 
     use_container_width=True, 
     height=450,
@@ -128,7 +126,4 @@ st.dataframe(
 
 # BOUTON DE TELECHARGEMENT
 csv = df.to_csv(index=False).encode('utf-8')
-st.download_button("Telecharger les donnees (CSV)", data=csv, file_name="simulation_boetie.csv", mime="text/csv")
-
-
-
+st.download_button("Télécharger les données agrégées (CSV)", data=csv, file_name="export_microsimulation.csv", mime="text/csv")
